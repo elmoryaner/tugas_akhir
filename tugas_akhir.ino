@@ -10,12 +10,12 @@ int state;
 // ALL Touch panels and wiring is DIFFERENT
 // copy-paste results from TouchScreen_Calibr_native.ino
 const int XP = 8, XM = A2, YP = A3, YM = 9; //320x480 ID=0x9488
-const int TS_LEFT = 214, TS_RT = 925, TS_TOP = 949, TS_BOT = 191;
+const int TS_LEFT = 948, TS_RT = 124, TS_TOP = 922, TS_BOT = 143;
 
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
 Adafruit_GFX_Button start, mode, test; 
-Adafruit_GFX_Button on_btn, off_btn, back_btn;
+Adafruit_GFX_Button on_btn, off_btn, back_btn, next_btn;
 Adafruit_GFX_Button btn1, btn2, btn3, btn4;
 
 MCUFRIEND_kbv tft;
@@ -92,12 +92,13 @@ void drawStart()
     off_btn.initButton(&tft, 120, 260, 100, 40, WHITE, CYAN, BLACK, "OFF", 2);
     */
 
-    back_btn.initButton(&tft, 360, 260, 100, 40, WHITE, BLACK, WHITE, "BACK", 2);
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
 
-    btn1.initButton(&tft,  300, 100, 100, 40, WHITE, CYAN, BLACK, "10ml", 2);
-    btn2.initButton(&tft, 420, 100, 100, 40, WHITE, CYAN, BLACK, "50ml", 2);
-    btn3.initButton(&tft, 300, 160, 100, 40, WHITE, CYAN, BLACK, "100ml", 2);
-    btn4.initButton(&tft,  420, 160, 100, 40, WHITE, CYAN, BLACK, "200ml", 2);
+    btn1.initButton(&tft, 270, 100, 100, 40, WHITE, CYAN, BLACK, "100", 2);
+    btn2.initButton(&tft, 270, 160, 100, 40, WHITE, CYAN, BLACK, "20", 2);
+    btn3.initButton(&tft, 270, 220, 100, 40, WHITE, CYAN, BLACK, "100", 2);
+    btn4.initButton(&tft, 270, 280, 100, 40, WHITE, CYAN, BLACK, "2000", 2);
     
     /*
     on_btn.drawButton(false);
@@ -105,6 +106,7 @@ void drawStart()
     */
 
     back_btn.drawButton(false);
+    next_btn.drawButton(false);
 
     btn1.drawButton(false);
     btn2.drawButton(false);
@@ -117,11 +119,58 @@ void drawTest()
 {
     state = 2;
     tft.fillScreen(BLACK);
-    showmsgXY(10, 10, 2, NULL, "Pompa Air");
+    showmsgXY(20, 20, 2, NULL, "Pompa Air");
 
-    back_btn.initButton(&tft, 360, 260, 100, 40, WHITE, BLACK, WHITE, "BACK", 2);
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
     back_btn.drawButton(false);
 }
+
+void persiapanSampel()
+{
+    state = 3;
+    tft.fillScreen(BLACK);
+    showmsgXY(20, 20, 2, NULL, "Tahap 1");
+
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
+    start.initButton(&tft,  240, 160, 240, 60, WHITE, BLACK, WHITE, "Mulai", 3);
+
+    back_btn.drawButton(false);
+    next_btn.drawButton(false);
+    start.drawButton(false);
+}
+
+void pemfilteran()
+{
+    state = 4;
+    tft.fillScreen(BLACK);
+    showmsgXY(20, 20, 2, NULL, "Tahap 2");
+
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
+    start.initButton(&tft,  240, 160, 240, 60, WHITE, BLACK, WHITE, "Mulai", 3);
+
+    back_btn.drawButton(false);
+    next_btn.drawButton(false);
+    start.drawButton(false);
+}
+
+void pengukuran()
+{
+    state = 5;
+    tft.fillScreen(BLACK);
+    showmsgXY(20, 20, 2, NULL, "Tahap 3");
+
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "QUIT", 2);
+    start.initButton(&tft,  240, 160, 240, 60, WHITE, BLACK, WHITE, "Mulai", 3);
+    
+    back_btn.drawButton(false);
+    next_btn.drawButton(false);
+    start.drawButton(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
 
 void setup(void)
 {
@@ -145,6 +194,7 @@ void setup(void)
 
 void loop(void)
 {
+  // Main Menu
   if(state == 0){
     digitalWrite(relay, HIGH);
     bool down = Touch_getXY();
@@ -163,21 +213,29 @@ void loop(void)
     }
   }
 
+  // Menu Start
   else if (state == 1){
     showmsgXY(20, 20, 2, NULL, "Set Parameters");
 
-    showmsgXY(20, 60, 2, NULL, "Pump 1 Flow Rate \t\t mL/min");
-    showmsgXY(20, 100, 2, NULL, "Pump 2, 3 Flow Rate \t\t mL/min");
-    showmsgXY(20, 140, 2, NULL, "Suhu \t\t °C");
-    showmsgXY(20, 180, 2, NULL, "Kecepatan Aduk \t\t rpm");
+    showmsgXY(20, 90, 2, NULL, "Flow Rate 1");
+    showmsgXY(20, 150, 2, NULL, "Flow Rate 2, 3");
+    showmsgXY(20, 210, 2, NULL, "Temperature");
+    showmsgXY(20, 270, 2, NULL, "Stirrer Speed");
+
+    showmsgXY(390, 90, 2, NULL, "mL/min");
+    showmsgXY(390, 150, 2, NULL, "mL/min");
+    showmsgXY(390, 210, 2, NULL, "C");
+    showmsgXY(390, 270, 2, NULL, "rpm");
+
     bool down = Touch_getXY();
 
     /*
     on_btn.press(down && on_btn.contains(pixel_x, pixel_y));
     off_btn.press(down && off_btn.contains(pixel_x, pixel_y));
     */
-    
+
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
+    next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
 
     btn1.press(down && btn1.contains(pixel_x, pixel_y));
     btn2.press(down && btn2.contains(pixel_x, pixel_y));
@@ -194,6 +252,9 @@ void loop(void)
 
     if (back_btn.justReleased())
         back_btn.drawButton();
+
+    if (next_btn.justReleased())
+        next_btn.drawButton();
 
     if (btn1.justReleased())
         btn1.drawButton();
@@ -226,39 +287,37 @@ void loop(void)
         drawMenu();
     }
 
+    if (next_btn.justPressed()) {
+        next_btn.drawButton(true);
+        persiapanSampel();
+    }
+
     if (btn1.justPressed()) {
         btn1.drawButton(true);
-        digitalWrite(relay, LOW);
-        tft.fillRect(40, 50, 160, 80, GREEN);
-        delay(6000);
-        digitalWrite(relay, HIGH);
-        tft.fillRect(40, 50, 160, 80, RED);
+        Serial.println("100ml/min");
+        int flow1 = 100;
     }
     
     if (btn2.justPressed()) {
         btn2.drawButton(true);
-        digitalWrite(relay, LOW);
-        tft.fillRect(40, 50, 160, 80, GREEN);
-        delay(30000);
-        digitalWrite(relay, HIGH);
-        tft.fillRect(40, 50, 160, 80, RED);
+        Serial.println("20ml/min");
+        int flow2 = 20;
     }
 
     if (btn3.justPressed()) {
         btn3.drawButton(true);
-        digitalWrite(relay, LOW);
-        delay(60000);
-        digitalWrite(relay, HIGH);
+        Serial.println("100 C");
+        int temp = 100;
     }
 
     if (btn4.justPressed()) {
         btn4.drawButton(true);
-        digitalWrite(relay, LOW);
-        delay(120000);
-        digitalWrite(relay, HIGH);
+        Serial.println("2000 rpm");
+        int rpm = 2000;
     }
   }
 
+  // Menu Test
   else if (state == 2){
     bool down = Touch_getXY();
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
@@ -269,6 +328,114 @@ void loop(void)
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
         drawMenu();
+    }
+  }
+
+  // Tahap 1
+  else if (state == 3){
+    bool down = Touch_getXY();
+    back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
+    next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
+    start.press(down && start.contains(pixel_x, pixel_y));
+
+    if (back_btn.justReleased())
+        back_btn.drawButton();
+
+    if (next_btn.justReleased())
+        next_btn.drawButton();
+
+    if (start.justReleased())
+        start.drawButton();
+    
+    if (back_btn.justPressed()) {
+        back_btn.drawButton(true);
+        drawStart();
+    }
+    
+    if (next_btn.justPressed()) {
+        next_btn.drawButton(true);
+        pemfilteran();
+    }
+
+    if (start.justPressed()) {
+        start.drawButton(true);
+        showmsgXY(120, 240, 2, NULL, "Pumping...");
+        digitalWrite(relay, LOW);
+        delay(2000);
+        digitalWrite(relay, HIGH);
+        showmsgXY(360, 240, 2, NULL, "Done");
+    }
+  }
+
+  // Tahap 2
+  else if (state == 4){
+    bool down = Touch_getXY();
+    back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
+    next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
+    start.press(down && start.contains(pixel_x, pixel_y));
+
+    if (back_btn.justReleased())
+        back_btn.drawButton();
+
+    if (next_btn.justReleased())
+        next_btn.drawButton();
+
+    if (start.justReleased())
+        start.drawButton();
+    
+    if (back_btn.justPressed()) {
+        back_btn.drawButton(true);
+        drawStart();
+    }
+
+    if (next_btn.justPressed()) {
+        next_btn.drawButton(true);
+        pengukuran();
+    }
+
+    if (start.justPressed()) {
+        start.drawButton(true);
+        showmsgXY(120, 240, 2, NULL, "Filtering...");
+        digitalWrite(relay, LOW);
+        delay(2000);
+        digitalWrite(relay, HIGH);
+        showmsgXY(360, 240, 2, NULL, "Done");
+    }
+  }
+
+  // Tahap 3
+  else if (state == 5){
+    bool down = Touch_getXY();
+    back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
+    next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
+    start.press(down && start.contains(pixel_x, pixel_y));
+
+    if (back_btn.justReleased())
+        back_btn.drawButton();
+
+    if (next_btn.justReleased())
+        next_btn.drawButton();
+
+    if (start.justReleased())
+        start.drawButton();
+
+    if (back_btn.justPressed()) {
+        back_btn.drawButton(true);
+        drawStart();
+    }
+    
+    if (next_btn.justPressed()) {
+        next_btn.drawButton(true);
+        drawMenu();
+    }
+
+    if (start.justPressed()) {
+        start.drawButton(true);
+        showmsgXY(120, 240, 2, NULL, "Measuring...");
+        digitalWrite(relay, LOW);
+        delay(2000);
+        digitalWrite(relay, HIGH);
+        showmsgXY(360, 240, 2, NULL, "Done");
     }
   }
 }
