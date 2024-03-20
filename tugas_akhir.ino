@@ -406,7 +406,9 @@ void loop(void)
     bool down = Touch_getXY();
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
     next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
+    start.press(down && start.contains(pixel_x, pixel_y));
 
+    // Background Putih
     tft.drawLine(10, 300, 10 + 380, 300, tft.color565(255, 255, 255));   
     tft.drawLine(10 + 19 + 0 * 50.6, 300, 10 + 19 + 0 * 50.6, 305, tft.color565(255, 255, 255));
     tft.drawLine(10 + 19 + 0.5 * 50.6, 300, 10 + 19 + 0.5 * 50.6, 305, tft.color565(255, 255, 255));
@@ -424,67 +426,80 @@ void loop(void)
     tft.drawLine(10 + 19 + 7.0 * 50.6, 300, 10 + 19 + 7.0 * 50.6, 305, tft.color565(255, 255, 255));
 
     tft.fillRect(10,15,382,285,0xFFFF);
+    
+    if (back_btn.justReleased())
+        back_btn.drawButton();
 
-    // exposure = analogRead(expo);        // read integration time from potentiometer.
-    exposure = 100;              // Integrations-Intervall [0,255] ms
+    if (next_btn.justReleased())
+        next_btn.drawButton();
 
-    Serial.print("Exposure = ");
-    Serial.println(exposure);
-      
-    getCamera();
+    if (start.justReleased())
+        start.drawButton();    
 
-    for(i = 0; i < 128; i++){
-        if(i >= 0 && i < 32)
-           {       
-            tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255 - int((255.0/32.0) * (float(i) + 1.0/3.0)), 0, 255));        
-            tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/32.0) * (float(i) + 2.0/3.0)), 0, 255));
-            tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/32.0) * i), 0, 255));           
-           }
-
-        if(i >= 32 && i < 48)
-           {       
-            tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0, int((255.0/16.0) * (i - 32)),255));        
-            tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 1.0/3.0)), 255));
-            tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 2.0/3.0)), 255));            
-           }
-
-        if(i >= 48 && i < 61)
-           {       
-            tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48))));        
-            tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 1.0/3.0))));
-            tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 2.0/3.0))));
-           }
-
-         if(i >= 61 && i < 82)
-           {       
-            tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0 + int((255.0/21.0) * (i - 61)), 255, 0));        
-            tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 1.0/3.0)), 255, 0));
-            tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 2.0/3.0)), 255, 0));
-           }  
-        
-        if(i >= 82 && i < 107)
-           {       
-            tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255, 255 - int((255.0/25.0) * (i - 82)), 0));        
-            tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 1.0/3.0)), 0));
-            tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 2.0/3.0)), 0));           
-            } 
-        
-        if(i >= 107 && i < 127)
-           {       
-            tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255 - int((255.0/34.0) * (i - 107)), 0, 0));        
-            tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 1.0/3.0)), 0, 0));
-            tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 2.0/3.0)), 0, 0));
-           }
-
-        if(i == 127)
-           {
-            tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0 + int((255.0/34.0) * (i - 107)), 255, 255));
-           }
+    if (back_btn.justPressed()) {
+        back_btn.drawButton(true);
+        pengukuran();
     }
-     
-  tft.setTextColor(tft.color565(255, 255, 255),tft.color565(0, 0, 0));
-  drawCentreString("Spectrophotometer", 240, 3, 1);          
-  delay(5); 
+    
+    if (next_btn.justPressed()) {
+        next_btn.drawButton(true);
+        drawResults();
+    } 
+
+    if (start.justPressed()) {
+        // exposure = analogRead(expo);        // read integration time from potentiometer.
+        exposure = 100;                        // Integrations-Interval [0,255] ms
+
+        Serial.print("Exposure = ");
+        Serial.println(exposure);
+
+        start.drawButton(true);
+        getCamera();
+
+        // Spektrum Warna
+        for(i = 0; i < 128; i++){
+            if(i >= 0 && i < 32){       
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255 - int((255.0/32.0) * (float(i) + 1.0/3.0)), 0, 255));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/32.0) * (float(i) + 2.0/3.0)), 0, 255));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/32.0) * i), 0, 255));           
+            }
+
+            if(i >= 32 && i < 48){       
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0, int((255.0/16.0) * (i - 32)),255));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 1.0/3.0)), 255));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 2.0/3.0)), 255));            
+            }
+
+            if(i >= 48 && i < 61){       
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48))));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 1.0/3.0))));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 2.0/3.0))));
+            }
+
+            if(i >= 61 && i < 82){       
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0 + int((255.0/21.0) * (i - 61)), 255, 0));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 1.0/3.0)), 255, 0));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 2.0/3.0)), 255, 0));
+            }  
+        
+            if(i >= 82 && i < 107){       
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255, 255 - int((255.0/25.0) * (i - 82)), 0));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 1.0/3.0)), 0));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 2.0/3.0)), 0));           
+            } 
+            
+            if(i >= 107 && i < 127){       
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255 - int((255.0/34.0) * (i - 107)), 0, 0));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 1.0/3.0)), 0, 0));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 2.0/3.0)), 0, 0));
+            }
+
+            if(i == 127){
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0 + int((255.0/34.0) * (i - 107)), 255, 255));
+            }
+        }          
+        delay(500);
+    }
 
     if (back_btn.justReleased())
         back_btn.drawButton();

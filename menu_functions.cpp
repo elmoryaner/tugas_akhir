@@ -143,11 +143,14 @@ void drawGraph()
 
     back_btn.initButton(&tft, 435, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
     next_btn.initButton(&tft, 435, 80, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
+    start.initButton(&tft, 435, 130, 80, 40, WHITE, BLACK, WHITE, "START", 2);
     
     back_btn.drawButton(false);
     next_btn.drawButton(false);
+    start.drawButton(false);
 
     tft.setTextColor(tft.color565(255, 255, 255),tft.color565(0, 0, 0));
+    drawCentreString("Spectrophotometer", 240, 3, 1);
     drawCentreString("400", 10 + 19, 310,1);
     drawCentreString("440", 10 + 19 + 1 * 50.6, 310,1);
     drawCentreString("480", 10 + 19 + 2 * 50.6, 310,1);
