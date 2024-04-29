@@ -1,75 +1,60 @@
 #include <Adafruit_GFX.h>
+#include <Fonts/FreeMono12pt7b.h>
 #include <MCUFRIEND_kbv.h>
 #include <TouchScreen.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <SPI.h>
-#include <SD.h>
+#include <SdFat.h>
+#include <uRTCLib.h>
 #include "menu_functions.h"
+
+
+// uRTCLib rtc;
+uRTCLib rtc(0x68);
+
+char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 #define MINPRESSURE 200
 #define MAXPRESSURE 1000
-
-// Data Temp Sensors to Arduino pin 47
-#define ONE_WIRE_BUS 47
 
 // Spectrophotometer
 #define clk          31                // clock pin
 #define si           33                // start integration pin
 #define pixel_value  A15               // pixel brightness pin
-// #define expo         A1               // potentiometer pin
 
 const int chipSelect = 53; // Pin connected to the CS pin of SD card module
 int factor = 4;    
 long exposure;
 int pixels[128];
-int i,j;
+int i, j;
 
+SdFs SD;
 File dataFile; // File object to write data
-
-OneWire oneWire(ONE_WIRE_BUS);
-
-// Pass our oneWire reference to Dallas Temperature.
-DallasTemperature sensors(&oneWire);
-
+MCUFRIEND_kbv tft;
 Adafruit_GFX_Button start, stop, mode, refresh, keypad; 
-Adafruit_GFX_Button on_btn, off_btn, back_btn, next_btn;
+Adafruit_GFX_Button on, off, back_btn, next_btn;
 Adafruit_GFX_Button btn1, btn2, btn3, btn4;
 Adafruit_GFX_Button yes, no;
 
-MCUFRIEND_kbv tft;
-
 // Motor A: Pompa 1
-int enA = 31;
-int in1 = 33;
-int in2 = 35;
+int enA = 10;
+int in1 = 24;
+int in2 = 25;
 // Motor B: Pompa 2
-int enB = 41;
-int in3 = 37;
-int in4 = 39;
+int enB = 11;
+int in3 = 26;
+int in4 = 27;
+int speed1, speed2;
 
-// Motor C: Stirrer/Fan
-int enC = 30;
-int in5 = 32;
-int in6 = 34;
-// Motor D: Pompa 3
-int enD = 40;
-int in7 = 36;
-int in8 = 38;
-
-// Relay 1: PTC Heater
-int relay = 49;
+// Relay Lampu
+int relay = 38;
 
 // Menu
 int state;
 
-// Parameter
-int flow1, flow2, temp, rpm;
-
 // ALL Touch panels and wiring is DIFFERENT
 // copy-paste results from TouchScreen_Calibr_native.ino
 const int XP = 8, XM = A2, YP = A3, YM = 9; //320x480 ID=0x9488
-const int TS_LEFT = 948, TS_RT = 124, TS_TOP = 922, TS_BOT = 143;
+const int TS_LEFT = 946, TS_RT = 164, TS_TOP = 921, TS_BOT = 179;
 
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
@@ -104,7 +89,7 @@ bool Touch_getXY(void)
 
 void setup(void)
 {
-    // matikan relay 1
+    // Turn off relay
     pinMode(relay, OUTPUT);
     digitalWrite(relay, HIGH);
 
@@ -115,26 +100,37 @@ void setup(void)
     pinMode(in2, OUTPUT);
     pinMode(in3, OUTPUT);
     pinMode(in4, OUTPUT);
-    
-    pinMode(enC, OUTPUT);
-    pinMode(enD, OUTPUT);
-    pinMode(in5, OUTPUT);
-    pinMode(in6, OUTPUT);
-    pinMode(in7, OUTPUT);
-    pinMode(in8, OUTPUT);
 
     // Turn off motors - Initial state
     digitalWrite(in1, LOW);
     digitalWrite(in2, LOW);
     digitalWrite(in3, LOW);
     digitalWrite(in4, LOW);
-    
-    digitalWrite(in5, LOW);
-    digitalWrite(in6, LOW);
-    digitalWrite(in7, LOW);
-    digitalWrite(in8, LOW);
 
     Serial.begin(115200);
+
+    URTCLIB_WIRE.begin();
+
+    // rtc.set(second, minute, hour, dayOfWeek, dayOfMonth, month, year)
+    // set day of week (1=Sunday, 7=Saturday)
+    rtc.refresh();
+
+    Serial.print("Current Date & Time: 20");
+    Serial.print(rtc.year());
+    Serial.print('/');
+    Serial.print(rtc.month());
+    Serial.print('/');
+    Serial.print(rtc.day());
+
+    Serial.print(" (");
+    Serial.print(daysOfTheWeek[rtc.dayOfWeek()-1]);
+    Serial.print(") ");
+
+    Serial.print(rtc.hour());
+    Serial.print(':');
+    Serial.print(rtc.minute());
+    Serial.print(':');
+    Serial.println(rtc.second());
 
     pinMode(si, OUTPUT);
     pinMode(clk, OUTPUT);
@@ -147,34 +143,22 @@ void setup(void)
     if (ID == 0xD3D3) ID = 0x9486; // write-only shield
     tft.begin(ID);
     tft.setRotation(1);            // Landscape
-    sensors.begin();
     drawMenu();
 
     // Initialize SD card
     if (!SD.begin(chipSelect)) {
       Serial.println("SD card initialization failed!");
-      return;
-    }
-    Serial.println("SD card initialized successfully.");
-
-    // Create a new file on the SD card
-    dataFile = SD.open("data.txt", FILE_WRITE);
-    if (dataFile) {
-      Serial.println("File opened successfully.");
     } else {
-      Serial.println("Error opening file!");
+      Serial.println("SD card initialized successfully.");
     }
 }
-
-// two buttons are quite simple
 
 void loop(void)
 {
   // Main Menu
   if(state == 0){
-    digitalWrite(relay, HIGH);
+    rtc.refresh();
     bool down = Touch_getXY();
-
     start.press(down && start.contains(pixel_x, pixel_y));
     
     if (start.justPressed()) {
@@ -185,45 +169,15 @@ void loop(void)
 
   // Menu Start
   else if (state == 1){
-    showmsgXY(20, 20, 2, NULL, "Set Parameters");
-
-    showmsgXY(20, 90, 2, NULL, "Flow Rate 1");
-    showmsgXY(20, 150, 2, NULL, "Flow Rate 2");
-    showmsgXY(20, 210, 2, NULL, "Temperature");
-    showmsgXY(20, 270, 2, NULL, "Stirrer Speed");
-
-    showmsgXY(390, 90, 2, NULL, "mL/min");
-    showmsgXY(390, 150, 2, NULL, "mL/min");
-    showmsgXY(390, 210, 2, NULL, "C");
-    showmsgXY(390, 270, 2, NULL, "rpm");
-
     bool down = Touch_getXY();
-
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
     next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
-
-    btn1.press(down && btn1.contains(pixel_x, pixel_y));
-    btn2.press(down && btn2.contains(pixel_x, pixel_y));
-    btn3.press(down && btn3.contains(pixel_x, pixel_y));
-    btn4.press(down && btn4.contains(pixel_x, pixel_y));
 
     if (back_btn.justReleased())
         back_btn.drawButton();
 
     if (next_btn.justReleased())
         next_btn.drawButton();
-
-    if (btn1.justReleased())
-        btn1.drawButton();
-
-    if (btn2.justReleased())
-        btn2.drawButton();
-
-    if (btn3.justReleased())
-        btn3.drawButton();
-
-    if (btn4.justReleased())
-        btn4.drawButton();
 
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
@@ -234,30 +188,6 @@ void loop(void)
         next_btn.drawButton(true);
         persiapanSampel();
     }
-
-    if (btn1.justPressed()) {
-        btn1.drawButton(true);
-        Serial.println("100ml/min");
-        flow1 = 100;
-    }
-    
-    if (btn2.justPressed()) {
-        btn2.drawButton(true);
-        Serial.println("20ml/min");
-        flow2 = 20;
-    }
-
-    if (btn3.justPressed()) {
-        btn3.drawButton(true);
-        Serial.println("50 C");
-        temp = 50;
-    }
-
-    if (btn4.justPressed()) {
-        btn4.drawButton(true);
-        Serial.println("1000 rpm");
-        rpm = 1000;
-    }
   }
 
   // Tahap 1
@@ -265,7 +195,8 @@ void loop(void)
     bool down = Touch_getXY();
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
     next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
-    start.press(down && start.contains(pixel_x, pixel_y));
+    on.press(down && on.contains(pixel_x, pixel_y));
+    off.press(down && off.contains(pixel_x, pixel_y));
 
     if (back_btn.justReleased())
         back_btn.drawButton();
@@ -273,9 +204,12 @@ void loop(void)
     if (next_btn.justReleased())
         next_btn.drawButton();
 
-    if (start.justReleased())
-        start.drawButton();
+    if (on.justReleased())
+        on.drawButton();
     
+    if (off.justReleased())
+        off.drawButton();
+
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
         drawStart();
@@ -286,17 +220,25 @@ void loop(void)
         pemfilteran();
     }
 
-    if (start.justPressed()) {
-        start.drawButton(true);
-        showmsgXY(120, 240, 2, NULL, "Pumping...");
-        analogWrite(enA, 255);
-        digitalWrite(in1, HIGH);
-	      digitalWrite(in2, LOW);
-        delay(60000);
+    if (on.justPressed()) {
+        on.drawButton(true);
+        tft.fillRect(270, 180, 100, 60, GREEN);
+        digitalWrite(in1, LOW);
+	      digitalWrite(in2, HIGH);
+    }
+
+    if (off.justPressed()) {
+        off.drawButton(true);
+        tft.fillRect(270, 180, 100, 60, RED);
         digitalWrite(in1, LOW);
 	      digitalWrite(in2, LOW);
-        showmsgXY(360, 240, 2, NULL, "Done");
     }
+
+    speed1 = analogRead(A8);
+    if(speed1 != 0){
+      speed1 = (speed1+255)/5;
+    }
+    analogWrite(enA, speed1);
   }
 
   // Tahap 2
@@ -306,7 +248,6 @@ void loop(void)
     next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
     start.press(down && start.contains(pixel_x, pixel_y));
     stop.press(down && stop.contains(pixel_x, pixel_y));
-    // refresh.press(down && refresh.contains(pixel_x, pixel_y));
 
     if (back_btn.justReleased())
         back_btn.drawButton();
@@ -319,9 +260,6 @@ void loop(void)
 
     if (stop.justReleased())
         stop.drawButton();
-
-    //if (refresh.justReleased())
-        //refresh.drawButton();
     
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
@@ -335,16 +273,7 @@ void loop(void)
 
     if (start.justPressed()) {
         start.drawButton(true);
-        sensors.requestTemperatures();
 
-        analogWrite(enB, 128);
-        
-        digitalWrite(in3, HIGH);
-	      digitalWrite(in4, LOW);
-        digitalWrite(relay, LOW);
-
-        float temp1 = sensors.getTempCByIndex(0);
-        Serial.println(temp1);
     }
 
     if (stop.justPressed()) {
@@ -353,13 +282,6 @@ void loop(void)
 	      digitalWrite(in4, LOW);
         digitalWrite(relay, HIGH);
     }
-
-    /*if (refresh.justPressed()) {
-        refresh.drawButton(true);
-        float temp1 = sensors.getTempCByIndex(0);
-        tft.fillRect(100, 80, 80, 40, BLACK);
-        drawTemp(80, 80, temp1);
-    } */
   }
 
   // Tahap 3
@@ -367,7 +289,8 @@ void loop(void)
     bool down = Touch_getXY();
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
     next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
-    start.press(down && start.contains(pixel_x, pixel_y));
+    on.press(down && on.contains(pixel_x, pixel_y));
+    off.press(down && off.contains(pixel_x, pixel_y));
 
     if (back_btn.justReleased())
         back_btn.drawButton();
@@ -375,8 +298,11 @@ void loop(void)
     if (next_btn.justReleased())
         next_btn.drawButton();
 
-    if (start.justReleased())
-        start.drawButton();
+    if (on.justReleased())
+        on.drawButton();
+
+    if (off.justReleased())
+        off.drawButton();
 
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
@@ -388,17 +314,25 @@ void loop(void)
         drawGraph();
     }
 
-    if (start.justPressed()) {
-        start.drawButton(true);
-        showmsgXY(120, 240, 2, NULL, "Pumping...");
-        analogWrite(enD, 255);
-        digitalWrite(in7, LOW);
-	      digitalWrite(in8, HIGH);
-        delay(15000);
-        digitalWrite(in7, LOW);
-	      digitalWrite(in8, LOW);
-        showmsgXY(360, 240, 2, NULL, "Done");
+    if (on.justPressed()) {
+        on.drawButton(true);
+        tft.fillRect(270, 180, 100, 60, GREEN);
+        digitalWrite(in3, LOW);
+	      digitalWrite(in4, HIGH);
     }
+
+    if (off.justPressed()) {
+        off.drawButton(true);
+        tft.fillRect(270, 180, 100, 60, RED);
+        digitalWrite(in3, LOW);
+	      digitalWrite(in4, LOW);
+    }
+
+    speed2 = analogRead(A9);
+    if(speed2 != 0){
+      speed2 = speed2 / 5.68 + 75;
+    }
+    analogWrite(enB, speed2);
   }
 
   // Grafik Spektrofotometer
@@ -447,7 +381,7 @@ void loop(void)
     } 
 
     if (start.justPressed()) {
-        // exposure = analogRead(expo);        // read integration time from potentiometer.
+        digitalWrite(relay, LOW);
         exposure = 100;                        // Integrations-Interval [0,255] ms
 
         Serial.print("Exposure = ");
@@ -455,7 +389,8 @@ void loop(void)
 
         start.drawButton(true);
         getCamera();
-
+        delay(2000);
+        digitalWrite(relay, HIGH);
         // Spektrum Warna
         for(i = 0; i < 128; i++){
             if(i >= 0 && i < 32){       
@@ -497,8 +432,8 @@ void loop(void)
             if(i == 127){
                 tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0 + int((255.0/34.0) * (i - 107)), 255, 255));
             }
-        }          
-        delay(500);
+        }         
+        delay(5000);
     }
 
     if (back_btn.justReleased())
@@ -555,33 +490,47 @@ void loop(void)
 
     if (yes.justPressed()) {
         yes.drawButton(true);
-        
-        dataFile = SD.open("data.txt", FILE_WRITE);
-        // if the file opened okay, write to it:
+
+        int year = rtc.year();
+        int month = rtc.month();
+        int day = rtc.day();
+        int hour = rtc.hour();
+        int minute = rtc.minute();
+        int second = rtc.second();
+        char fileName[50];
+
+        sprintf(fileName, "data_20%02d%02d%02d_%02d-%02d-%02d.csv", year, month, day, hour, minute, second);
+        Serial.println(fileName);
+
+        // Create a new file on the SD card
+        dataFile = SD.open(fileName, FILE_WRITE);
+
         if (dataFile) {
-          Serial.print("Writing to data.txt...");
+          Serial.print("Writing to file...");
+          
           dataFile.println("PARAMETER");
-          dataFile.print("Flow Rate Pompa 1: ");
-          dataFile.println(flow1);
-          dataFile.print("Flow Rate Pompa 2: ");
-          dataFile.println(flow2);
-          dataFile.print("Temperature: ");
-          dataFile.println(temp);
-          dataFile.print("Stirrer Speed: ");
-          dataFile.println(rpm);
+          dataFile.print("Exposure: ");
+          dataFile.println(exposure);
+
+          dataFile.println("HASIL");
+
+          for(int j = 0; j < 128; j++)
+          {
+            dataFile.println(pixels[j]);
+          }
 
           // close the file:
           dataFile.close();
           Serial.println("done.");
         } else {
           // if the file didn't open, print an error:
-          Serial.println("error opening test.txt");
+          Serial.println("Error opening file!");
         }
         
         // re-open the file for reading:
-        dataFile = SD.open("data.txt");
+        dataFile = SD.open(fileName);
         if (dataFile) {
-          Serial.println("data.txt:");
+          Serial.println(fileName);
 
           // read from the file until there's nothing else in it:
           while (dataFile.available()) {
@@ -591,7 +540,7 @@ void loop(void)
           dataFile.close();
         } else {
           // if the file didn't open, print an error:
-          Serial.println("error opening data.txt");
+          Serial.println("Error opening file!");
         }
         drawPrompt();
     }
@@ -616,7 +565,7 @@ void loop(void)
 
     if (yes.justPressed()) {
         yes.drawButton(true);
-        drawStart();
+        drawGraph();
     }
 
     if (no.justPressed()) {
@@ -626,6 +575,7 @@ void loop(void)
   }
 }
 
+// Mengambil Data Sensor dari TSL1401
 void getCamera(){
   digitalWrite(clk, LOW);
   digitalWrite(si, HIGH);

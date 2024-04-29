@@ -1,9 +1,10 @@
 #include <Adafruit_GFX.h>
 #include <MCUFRIEND_kbv.h>
+#include <Fonts/FreeMono12pt7b.h>
 
 // Adafruit GFX
 extern Adafruit_GFX_Button start, stop, mode, refresh, keypad; 
-extern Adafruit_GFX_Button on_btn, off_btn, back_btn, next_btn;
+extern Adafruit_GFX_Button on, off, back_btn, next_btn;
 extern Adafruit_GFX_Button btn1, btn2, btn3, btn4;
 extern Adafruit_GFX_Button yes, no;
 
@@ -59,35 +60,26 @@ void drawMenu()
     state = 0;
     tft.fillScreen(BLACK);
 
-    showmsgXY(15,20,3,NULL,"Menu");
-    drawCentreString("Welcome", 240, 80, 3);
-
-    start.initButton(&tft,  240, 200, 240, 120, WHITE, BLACK, WHITE, "Mulai", 3);
+    showmsgXY(20, 20, 2, NULL, "Welcome");
+    showmsgXY(20, 40, 2, NULL, "Penguji Efisiensi Filter MOF");
+    start.initButton(&tft, 240, 200, 120, 60, WHITE, BLACK, WHITE, "Mulai", 2);
     start.drawButton(false);
 }
+
 
 void drawStart()
 {
     state = 1;
     tft.fillScreen(BLACK);
 
+    showmsgXY(15,20,3,NULL,"Menu");
     back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
     next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
 
-    btn1.initButton(&tft, 300, 100, 60, 40, WHITE, CYAN, BLACK, "100", 2);
-    btn2.initButton(&tft, 300, 160, 60, 40, WHITE, CYAN, BLACK, "20", 2);
-    btn3.initButton(&tft, 300, 220, 60, 40, WHITE, CYAN, BLACK, "50", 2);
-    btn4.initButton(&tft, 300, 280, 60, 40, WHITE, CYAN, BLACK, "1000", 2);
-
     back_btn.drawButton(false);
     next_btn.drawButton(false);
-
-    btn1.drawButton(false);
-    btn2.drawButton(false);
-    btn3.drawButton(false);
-    btn4.drawButton(false);
-  
 }
+
 
 void persiapanSampel()
 {
@@ -97,11 +89,13 @@ void persiapanSampel()
 
     back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
     next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
-    start.initButton(&tft,  240, 160, 240, 60, WHITE, BLACK, WHITE, "Mulai", 3);
+    on.initButton(&tft, 120, 160, 100, 60, WHITE, BLACK, WHITE, "ON", 3);
+    off.initButton(&tft, 120, 240, 100, 60, WHITE, BLACK, WHITE, "OFF", 3);
 
     back_btn.drawButton(false);
     next_btn.drawButton(false);
-    start.drawButton(false);
+    on.drawButton(false);
+    off.drawButton(false);
 }
 
 void pemfilteran()
@@ -129,11 +123,13 @@ void pengukuran()
 
     back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
     next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
-    start.initButton(&tft,  240, 160, 240, 60, WHITE, BLACK, WHITE, "Mulai", 3);
+    on.initButton(&tft, 120, 160, 100, 60, WHITE, BLACK, WHITE, "ON", 3);
+    off.initButton(&tft, 120, 240, 100, 60, WHITE, BLACK, WHITE, "OFF", 3);
     
     back_btn.drawButton(false);
     next_btn.drawButton(false);
-    start.drawButton(false);
+    on.drawButton(false);
+    off.drawButton(false);
 }
 
 void drawGraph()
