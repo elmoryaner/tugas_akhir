@@ -17,11 +17,12 @@ char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursd
 #define MAXPRESSURE 1000
 
 // Spectrophotometer
-#define clk          31                // clock pin
-#define si           33                // start integration pin
-#define pixel_value  A15               // pixel brightness pin
+#define clk          27                // clock pin
+#define si           25                // start integration pin
+#define pixel_value  A10               // pixel brightness pin
 
 const int chipSelect = 53; // Pin connected to the CS pin of SD card module
+
 int factor = 4;    
 long exposure;
 int pixels[128];
@@ -35,18 +36,22 @@ Adafruit_GFX_Button on, off, back_btn, next_btn;
 Adafruit_GFX_Button btn1, btn2, btn3, btn4;
 Adafruit_GFX_Button yes, no;
 
-// Motor A: Pompa 1
-int enA = 10;
-int in1 = 24;
-int in2 = 25;
-// Motor B: Pompa 2
-int enB = 11;
-int in3 = 26;
-int in4 = 27;
+// Pompa 1
+int enA = 10; // PWM
+int in1 = 31;
+int in2 = 33;
+// Pompa 2
+int in3 = 35;
+int in4 = 37;
+int enB = 11; // PWM
+
+// Potensiometer
 int speed1, speed2;
 
 // Relay Lampu
-int relay = 38;
+int relay1 = 23;
+int relay2 = 25;
+int relay3 = 27;
 
 // Menu
 int state;
@@ -54,7 +59,7 @@ int state;
 // ALL Touch panels and wiring is DIFFERENT
 // copy-paste results from TouchScreen_Calibr_native.ino
 const int XP = 8, XM = A2, YP = A3, YM = 9; //320x480 ID=0x9488
-const int TS_LEFT = 946, TS_RT = 164, TS_TOP = 921, TS_BOT = 179;
+const int TS_LEFT = 947, TS_RT = 65, TS_TOP = 908, TS_BOT = 128;
 
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
@@ -68,8 +73,8 @@ bool Touch_getXY(void)
     digitalWrite(XM, HIGH);
     bool pressed = (p.z > MINPRESSURE && p.z < MAXPRESSURE);
     if (pressed) {
-      pixel_x = map(p.y, 944, 179, 0, 480);
-      pixel_y = map(p.x, 926, 213, 0, 320);
+      pixel_x = map(p.y, 947, 65, 0, 480);
+      pixel_y = map(p.x, 908, 128, 0, 320);
     }
     return pressed;
 }
@@ -90,8 +95,13 @@ bool Touch_getXY(void)
 void setup(void)
 {
     // Turn off relay
-    pinMode(relay, OUTPUT);
-    digitalWrite(relay, HIGH);
+    pinMode(relay1, OUTPUT);
+    pinMode(relay2, OUTPUT);
+    pinMode(relay3, OUTPUT);
+
+    digitalWrite(relay1, HIGH);
+    digitalWrite(relay2, HIGH);
+    digitalWrite(relay3, HIGH);
 
     // Set all the motor control pins to outputs
     pinMode(enA, OUTPUT);
@@ -234,7 +244,7 @@ void loop(void)
 	      digitalWrite(in2, LOW);
     }
 
-    speed1 = analogRead(A8);
+    speed1 = analogRead(A9);
     if(speed1 != 0){
       speed1 = (speed1+255)/5;
     }
@@ -273,6 +283,8 @@ void loop(void)
 
     if (start.justPressed()) {
         start.drawButton(true);
+        digitalWrite(relay1, LOW);
+        digitalWrite(relay2, LOW);
 
     }
 
@@ -280,7 +292,8 @@ void loop(void)
         stop.drawButton(true);
         digitalWrite(in3, LOW);
 	      digitalWrite(in4, LOW);
-        digitalWrite(relay, HIGH);
+        digitalWrite(relay1, HIGH);
+        digitalWrite(relay2, HIGH);
     }
   }
 
@@ -328,7 +341,7 @@ void loop(void)
 	      digitalWrite(in4, LOW);
     }
 
-    speed2 = analogRead(A9);
+    speed2 = analogRead(A8);
     if(speed2 != 0){
       speed2 = speed2 / 5.68 + 75;
     }
@@ -381,7 +394,7 @@ void loop(void)
     } 
 
     if (start.justPressed()) {
-        digitalWrite(relay, LOW);
+        digitalWrite(relay3, LOW);
         exposure = 100;                        // Integrations-Interval [0,255] ms
 
         Serial.print("Exposure = ");
@@ -390,7 +403,7 @@ void loop(void)
         start.drawButton(true);
         getCamera();
         delay(2000);
-        digitalWrite(relay, HIGH);
+        digitalWrite(relay3, HIGH);
         // Spektrum Warna
         for(i = 0; i < 128; i++){
             if(i >= 0 && i < 32){       
