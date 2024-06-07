@@ -1,6 +1,7 @@
 #include <Adafruit_GFX.h>
 #include <MCUFRIEND_kbv.h>
-#include <Fonts/FreeMono12pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSans12pt7b.h>
 
 // Adafruit GFX
 extern Adafruit_GFX_Button start, stop, mode, refresh, keypad; 
@@ -40,6 +41,7 @@ void drawCentreString(const char *buf, int x, int y, int sz)
 {
     int16_t x1, y1;
     uint16_t w, h;
+    tft.setFont(NULL);
     tft.getTextBounds(buf, x, y, &x1, &y1, &w, &h); //calc width of new string
     tft.setCursor(x - w / 2, y);
     tft.setTextSize(sz);
@@ -51,7 +53,7 @@ void drawTemp(byte x, byte y, float temp)
 {
   char buf[16];
   dtostrf(temp, 6, 1, buf);
-  showmsgXY(x, y, 2, NULL, buf);  
+  showmsgXY(x, y, 2, &FreeSans12pt7b, buf);  
 }
 */
 
@@ -60,10 +62,13 @@ void drawMenu()
     state = 0;
     tft.fillScreen(BLACK);
 
-    showmsgXY(20, 20, 2, NULL, "Welcome");
-    showmsgXY(20, 40, 2, NULL, "Penguji Efisiensi Filter MOF");
-    start.initButton(&tft, 240, 200, 120, 60, WHITE, BLACK, WHITE, "Mulai", 2);
+    showmsgXY(20, 40, 1, &FreeSans12pt7b, "Welcome");
+    showmsgXY(20, 80, 1, &FreeSans12pt7b, "Portable Filter Reactor");
+    showmsgXY(20, 120, 1, &FreeSans12pt7b, "& Spectrophotometer");
+    start.initButton(&tft, 240, 180, 150, 60, WHITE, BLACK, WHITE, "Start", 1);
     start.drawButton(false);
+    mode.initButton(&tft, 240, 260, 150, 60, WHITE, BLACK, WHITE, "Calibrate", 1);
+    mode.drawButton(false);
 }
 
 
@@ -72,12 +77,9 @@ void drawStart()
     state = 1;
     tft.fillScreen(BLACK);
 
-    showmsgXY(15,20,3,NULL,"Menu");
-    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
-    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
-
+    showmsgXY(20,40,1,&FreeSans12pt7b,"Calibration");
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
     back_btn.drawButton(false);
-    next_btn.drawButton(false);
 }
 
 
@@ -85,12 +87,12 @@ void persiapanSampel()
 {
     state = 2;
     tft.fillScreen(BLACK);
-    showmsgXY(20, 20, 2, NULL, "Tahap 1");
-
-    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
-    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
-    on.initButton(&tft, 120, 160, 100, 60, WHITE, BLACK, WHITE, "ON", 3);
-    off.initButton(&tft, 120, 240, 100, 60, WHITE, BLACK, WHITE, "OFF", 3);
+    showmsgXY(20, 40, 1, &FreeSans12pt7b, "Pump Sample");
+    showmsgXY(20, 80, 1, &FreeSans12pt7b, "to Filter Reactor");
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 1);
+    on.initButton(&tft, 120, 160, 100, 60, WHITE, BLACK, WHITE, "ON", 1);
+    off.initButton(&tft, 120, 240, 100, 60, WHITE, BLACK, WHITE, "OFF", 1);
 
     back_btn.drawButton(false);
     next_btn.drawButton(false);
@@ -102,12 +104,12 @@ void pemfilteran()
 {
     state = 3;
     tft.fillScreen(BLACK);
-    showmsgXY(20, 20, 2, NULL, "Tahap 2");
-
-    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
-    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
-    start.initButton(&tft, 180, 160, 120, 60, WHITE, BLACK, WHITE, "Start", 3);
-    stop.initButton(&tft, 180, 240, 120, 60, WHITE, BLACK, WHITE, "Stop", 3);
+    showmsgXY(20, 40, 1, &FreeSans12pt7b, "Filter Reactor");
+    showmsgXY(20, 80, 1, &FreeSans12pt7b, "Start/Stop");
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 1);
+    start.initButton(&tft, 120, 160, 100, 60, WHITE, BLACK, WHITE, "Start", 1);
+    stop.initButton(&tft, 120, 240, 100, 60, WHITE, BLACK, WHITE, "Stop", 1);
 
     back_btn.drawButton(false);
     next_btn.drawButton(false);
@@ -119,12 +121,12 @@ void pengukuran()
 {
     state = 4;
     tft.fillScreen(BLACK);
-    showmsgXY(20, 20, 2, NULL, "Tahap 3");
-
-    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
-    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
-    on.initButton(&tft, 120, 160, 100, 60, WHITE, BLACK, WHITE, "ON", 3);
-    off.initButton(&tft, 120, 240, 100, 60, WHITE, BLACK, WHITE, "OFF", 3);
+    showmsgXY(20, 40, 1, &FreeSans12pt7b, "Pump Filtrate");
+    showmsgXY(20, 80, 1, &FreeSans12pt7b, "to Cuvette");
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 1);
+    on.initButton(&tft, 120, 160, 100, 60, WHITE, BLACK, WHITE, "ON", 1);
+    off.initButton(&tft, 120, 240, 100, 60, WHITE, BLACK, WHITE, "OFF", 1);
     
     back_btn.drawButton(false);
     next_btn.drawButton(false);
@@ -137,14 +139,6 @@ void drawGraph()
     state = 5;
     tft.fillScreen(BLACK);
 
-    back_btn.initButton(&tft, 435, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
-    next_btn.initButton(&tft, 435, 80, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
-    start.initButton(&tft, 435, 130, 80, 40, WHITE, BLACK, WHITE, "START", 2);
-    
-    back_btn.drawButton(false);
-    next_btn.drawButton(false);
-    start.drawButton(false);
-
     tft.setTextColor(tft.color565(255, 255, 255),tft.color565(0, 0, 0));
     drawCentreString("Spectrophotometer", 240, 3, 1);
     drawCentreString("400", 10 + 19, 310,1);
@@ -156,16 +150,25 @@ void drawGraph()
     drawCentreString("640", 10 + 19 + 6 * 50.6, 310,1);
     drawCentreString("680", 10 + 19 + 7 * 50.6, 310,1);
     drawCentreString("[nm]", 420, 310,1);
+
+    tft.setFont(&FreeSans9pt7b);
+    back_btn.initButton(&tft, 435, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
+    next_btn.initButton(&tft, 435, 80, 80, 40, WHITE, BLACK, WHITE, "NEXT", 1);
+    start.initButton(&tft, 435, 130, 80, 40, WHITE, BLACK, WHITE, "START", 1);
+    
+    back_btn.drawButton(false);
+    next_btn.drawButton(false);
+    start.drawButton(false);
 }
 
 void drawResults()
 {
     state = 6;
     tft.fillScreen(BLACK);
-    showmsgXY(20, 20, 2, NULL, "Hasil");
+    showmsgXY(20, 40, 1, &FreeSans12pt7b, "Results");
 
-    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 2);
-    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 2);
+    back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
+    next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 1);
     
     back_btn.drawButton(false);
     next_btn.drawButton(false);
@@ -175,10 +178,10 @@ void drawSave()
 {
     state = 7;
     tft.fillScreen(BLACK);
-    showmsgXY(20, 20, 2, NULL, "Save Data?");
+    showmsgXY(20, 40, 1, &FreeSans12pt7b, "Save Data?");
 
-    yes.initButton(&tft, 180, 160, 120, 60, WHITE, BLACK, WHITE, "Yes", 3);
-    no.initButton(&tft, 180, 240, 120, 60, WHITE, BLACK, WHITE, "No", 3);
+    yes.initButton(&tft, 180, 160, 120, 60, WHITE, BLACK, WHITE, "Yes", 1);
+    no.initButton(&tft, 180, 240, 120, 60, WHITE, BLACK, WHITE, "No", 1);
     
     yes.drawButton(false);
     no.drawButton(false);
@@ -188,10 +191,10 @@ void drawPrompt()
 {
     state = 8;
     tft.fillScreen(BLACK);
-    showmsgXY(20, 20, 2, NULL, "Retry?");
+    showmsgXY(20, 40, 1, &FreeSans12pt7b, "Retry?");
 
-    yes.initButton(&tft, 180, 160, 120, 60, WHITE, BLACK, WHITE, "Yes", 3);
-    no.initButton(&tft, 180, 240, 120, 60, WHITE, BLACK, WHITE, "No", 3);
+    yes.initButton(&tft, 180, 160, 120, 60, WHITE, BLACK, WHITE, "Yes", 1);
+    no.initButton(&tft, 180, 240, 120, 60, WHITE, BLACK, WHITE, "No", 1);
     
     yes.drawButton(false);
     no.drawButton(false);

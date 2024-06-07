@@ -1,5 +1,6 @@
 #include <Adafruit_GFX.h>
-#include <Fonts/FreeMono12pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSans12pt7b.h>
 #include <MCUFRIEND_kbv.h>
 #include <TouchScreen.h>
 #include <SPI.h>
@@ -19,12 +20,12 @@ char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursd
 // Spectrophotometer
 #define clk          27                // clock pin
 #define si           25                // start integration pin
-#define pixel_value  A10               // pixel brightness pin
+#define pixel_value  A15               // pixel brightness pin
 
 const int chipSelect = 53; // Pin connected to the CS pin of SD card module
 
 int factor = 4;    
-long exposure;
+int exposure = 0;
 int pixels[128];
 int i, j;
 
@@ -38,20 +39,20 @@ Adafruit_GFX_Button yes, no;
 
 // Pompa 1
 int enA = 10; // PWM
-int in1 = 31;
-int in2 = 33;
+int in3 = 31;
+int in4 = 33;
 // Pompa 2
-int in3 = 35;
-int in4 = 37;
+int in1 = 35;
+int in2 = 37;
 int enB = 11; // PWM
 
 // Potensiometer
 int speed1, speed2;
 
-// Relay Lampu
-int relay1 = 23;
-int relay2 = 25;
-int relay3 = 27;
+// Relay
+int relay1 = 29; 
+int relay2 = 31;
+int relay3 = 23; 
 
 // Menu
 int state;
@@ -167,12 +168,21 @@ void loop(void)
 {
   // Main Menu
   if(state == 0){
+
     rtc.refresh();
     bool down = Touch_getXY();
+
     start.press(down && start.contains(pixel_x, pixel_y));
+    mode.press(down && mode.contains(pixel_x, pixel_y));
+
     
     if (start.justPressed()) {
         start.drawButton(true);
+        persiapanSampel();
+    }
+
+    if (mode.justPressed()) {
+        mode.drawButton(true);
         drawStart();
     }
   }
@@ -186,17 +196,9 @@ void loop(void)
     if (back_btn.justReleased())
         back_btn.drawButton();
 
-    if (next_btn.justReleased())
-        next_btn.drawButton();
-
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
         drawMenu();
-    }
-
-    if (next_btn.justPressed()) {
-        next_btn.drawButton(true);
-        persiapanSampel();
     }
   }
 
@@ -208,47 +210,49 @@ void loop(void)
     on.press(down && on.contains(pixel_x, pixel_y));
     off.press(down && off.contains(pixel_x, pixel_y));
 
+    tft.fillRect(180, 160, 20, 10, GREEN);
+    tft.fillRect(180, 240, 20, 10, RED);
+
     if (back_btn.justReleased())
         back_btn.drawButton();
 
     if (next_btn.justReleased())
         next_btn.drawButton();
 
-    if (on.justReleased())
-        on.drawButton();
-    
-    if (off.justReleased())
-        off.drawButton();
-
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
-        drawStart();
+        digitalWrite(in1, LOW);
+	      digitalWrite(in2, LOW);
+        drawMenu();
     }
     
     if (next_btn.justPressed()) {
         next_btn.drawButton(true);
+        digitalWrite(in1, LOW);
+	      digitalWrite(in2, LOW);
         pemfilteran();
     }
 
     if (on.justPressed()) {
+        off.drawButton(false);
         on.drawButton(true);
-        tft.fillRect(270, 180, 100, 60, GREEN);
         digitalWrite(in1, LOW);
 	      digitalWrite(in2, HIGH);
     }
 
     if (off.justPressed()) {
         off.drawButton(true);
-        tft.fillRect(270, 180, 100, 60, RED);
+        on.drawButton(false);
         digitalWrite(in1, LOW);
 	      digitalWrite(in2, LOW);
     }
 
-    speed1 = analogRead(A9);
+    speed1 = 1023 - analogRead(A8);
     if(speed1 != 0){
       speed1 = (speed1+255)/5;
     }
-    analogWrite(enA, speed1);
+    analogWrite(enB, speed1);
+    Serial.println(speed1);
   }
 
   // Tahap 2
@@ -264,36 +268,38 @@ void loop(void)
 
     if (next_btn.justReleased())
         next_btn.drawButton();
-
-    if (start.justReleased())
-        start.drawButton();
-
-    if (stop.justReleased())
-        stop.drawButton();
     
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
+        digitalWrite(relay1, HIGH);
+        digitalWrite(relay2, HIGH);
         persiapanSampel();
     }
 
     if (next_btn.justPressed()) {
         next_btn.drawButton(true);
+        digitalWrite(relay1, HIGH);
+        digitalWrite(relay2, HIGH);
         pengukuran();
     }
 
     if (start.justPressed()) {
         start.drawButton(true);
+        stop.drawButton();
         digitalWrite(relay1, LOW);
         digitalWrite(relay2, LOW);
+        tft.fillRect(180, 160, 20, 10, GREEN);
+        tft.fillRect(180, 240, 20, 10, BLACK);
 
     }
 
     if (stop.justPressed()) {
         stop.drawButton(true);
-        digitalWrite(in3, LOW);
-	      digitalWrite(in4, LOW);
+        start.drawButton();
         digitalWrite(relay1, HIGH);
         digitalWrite(relay2, HIGH);
+        tft.fillRect(180, 160, 20, 10, BLACK);
+        tft.fillRect(180, 240, 20, 10, RED);
     }
   }
 
@@ -305,47 +311,49 @@ void loop(void)
     on.press(down && on.contains(pixel_x, pixel_y));
     off.press(down && off.contains(pixel_x, pixel_y));
 
+    tft.fillRect(180, 160, 20, 10, GREEN);
+    tft.fillRect(180, 240, 20, 10, RED);
+
     if (back_btn.justReleased())
         back_btn.drawButton();
 
     if (next_btn.justReleased())
         next_btn.drawButton();
 
-    if (on.justReleased())
-        on.drawButton();
-
-    if (off.justReleased())
-        off.drawButton();
-
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
+        digitalWrite(in3, LOW);
+	      digitalWrite(in4, LOW);
         pemfilteran();
     }
     
     if (next_btn.justPressed()) {
         next_btn.drawButton(true);
+        digitalWrite(in3, LOW);
+	      digitalWrite(in4, LOW);
         drawGraph();
     }
 
     if (on.justPressed()) {
         on.drawButton(true);
-        tft.fillRect(270, 180, 100, 60, GREEN);
+        off.drawButton(false);
         digitalWrite(in3, LOW);
 	      digitalWrite(in4, HIGH);
     }
 
     if (off.justPressed()) {
+        on.drawButton(false);
         off.drawButton(true);
-        tft.fillRect(270, 180, 100, 60, RED);
         digitalWrite(in3, LOW);
 	      digitalWrite(in4, LOW);
     }
 
-    speed2 = analogRead(A8);
+    speed2 = 1023 - analogRead(A9);
     if(speed2 != 0){
       speed2 = speed2 / 5.68 + 75;
     }
-    analogWrite(enB, speed2);
+    analogWrite(enA, speed2);
+    Serial.println(speed2);
   }
 
   // Grafik Spektrofotometer
@@ -395,7 +403,7 @@ void loop(void)
 
     if (start.justPressed()) {
         digitalWrite(relay3, LOW);
-        exposure = 100;                        // Integrations-Interval [0,255] ms
+        // exposure = 0;                        // Integrations-Interval [0,255] ms
 
         Serial.print("Exposure = ");
         Serial.println(exposure);
@@ -447,22 +455,6 @@ void loop(void)
             }
         }         
         delay(5000);
-    }
-
-    if (back_btn.justReleased())
-        back_btn.drawButton();
-
-    if (next_btn.justReleased())
-        next_btn.drawButton();
-
-    if (back_btn.justPressed()) {
-        back_btn.drawButton(true);
-        pengukuran();
-    }
-    
-    if (next_btn.justPressed()) {
-        next_btn.drawButton(true);
-        drawResults();
     }
   }
 
@@ -594,9 +586,6 @@ void getCamera(){
   digitalWrite(si, HIGH);
   digitalWrite(clk, HIGH);
   digitalWrite(si, LOW);
-
-  int utime = micros();
-    
   digitalWrite(clk, LOW);
  
   for (int j = 0; j < 128; j++){
@@ -605,32 +594,68 @@ void getCamera(){
   }
  
   delayMicroseconds(exposure);
- 
+  
   digitalWrite(si, HIGH);
   digitalWrite(clk, HIGH);
   digitalWrite(si, LOW);
- 
-  utime = micros() - utime;
-    
   digitalWrite(clk, LOW);
     
   for (int j = 0; j < 128; j++){
     delayMicroseconds(20);
-        
-    pixels[j] = analogRead(pixel_value)/4;
-        
-    digitalWrite(clk, HIGH);
-    digitalWrite(clk, LOW);
-
+    
+    pixels[j] = analogRead(pixel_value) / factor;    // Brightness range [0,255]
     Serial.print("pixel-");
     Serial.print(j);
-    Serial.print(": ");
+    Serial.print(" ");
     Serial.print(pixels[j]);
     Serial.println();
+    digitalWrite(clk, HIGH);
+    digitalWrite(clk, LOW);
   }
-
-  digitalWrite(clk, HIGH);
-  digitalWrite(clk, LOW);
-
+ 
   delayMicroseconds(20);
+
+  // digitalWrite(clk, LOW);
+  // digitalWrite(si, HIGH);
+  // digitalWrite(clk, HIGH);
+  // digitalWrite(si, LOW);
+
+  // int utime = micros();
+    
+  // digitalWrite(clk, LOW);
+ 
+  // for (int j = 0; j < 128; j++){
+  //   digitalWrite(clk, HIGH);
+  //   digitalWrite(clk, LOW);
+  // }
+ 
+  // delayMicroseconds(exposure);
+ 
+  // digitalWrite(si, HIGH);
+  // digitalWrite(clk, HIGH);
+  // digitalWrite(si, LOW);
+ 
+  // utime = micros() - utime;
+    
+  // digitalWrite(clk, LOW);
+    
+  // for (int j = 0; j < 128; j++){
+  //   delayMicroseconds(20);
+        
+  //   pixels[j] = analogRead(pixel_value)/4;
+        
+  //   digitalWrite(clk, HIGH);
+  //   digitalWrite(clk, LOW);
+
+  //   Serial.print("pixel-");
+  //   Serial.print(j);
+  //   Serial.print(": ");
+  //   Serial.print(pixels[j]);
+  //   Serial.println();
+  // }
+
+  // digitalWrite(clk, HIGH);
+  // digitalWrite(clk, LOW);
+
+  // delayMicroseconds(20);
 }
