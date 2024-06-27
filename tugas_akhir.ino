@@ -25,16 +25,26 @@ char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursd
 const int chipSelect = 53; // Pin connected to the CS pin of SD card module
 
 int factor = 4;    
-int exposure = 0;
-int pixels[128];
+int exposure = 1;
+
+float pixels[128];
+float baseline[128];
+float absorbance[128];
+float wavelength[128];
+float au[128];
+
 int i, j;
+
+int baselineAcquired;
+int maxIndex;
+float maxValue;
+bool hasPrinted = false;
 
 SdFs SD;
 File dataFile; // File object to write data
 MCUFRIEND_kbv tft;
-Adafruit_GFX_Button start, stop, mode, refresh, keypad; 
+Adafruit_GFX_Button start, stop, mode, calibrate;
 Adafruit_GFX_Button on, off, back_btn, next_btn;
-Adafruit_GFX_Button btn1, btn2, btn3, btn4;
 Adafruit_GFX_Button yes, no;
 
 // Pompa 1
@@ -122,7 +132,7 @@ void setup(void)
 
     URTCLIB_WIRE.begin();
 
-    // rtc.set(second, minute, hour, dayOfWeek, dayOfMonth, month, year)
+    // rtc.set(0, 5, 21, 6, 8, 6, 24);
     // set day of week (1=Sunday, 7=Saturday)
     rtc.refresh();
 
@@ -183,15 +193,15 @@ void loop(void)
 
     if (mode.justPressed()) {
         mode.drawButton(true);
-        drawStart();
+        drawCalibrate();
     }
   }
 
-  // Menu Start
+  // Menu Kalibrasi
   else if (state == 1){
     bool down = Touch_getXY();
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
-    next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
+    calibrate.press(down && calibrate.contains(pixel_x, pixel_y));
 
     if (back_btn.justReleased())
         back_btn.drawButton();
@@ -199,6 +209,28 @@ void loop(void)
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
         drawMenu();
+    }
+
+    if (calibrate.justReleased())
+        calibrate.drawButton();
+
+    if (calibrate.justPressed()) {
+        //baselineAcquired = 0;
+        tft.fillRect(115, 245, 240, 40, BLACK);
+        calibrate.drawButton(true);
+        // Get Baseline
+        showmsgXY(120,280,1,&FreeSans12pt7b,"Get Baseline...");
+        digitalWrite(relay3, LOW);
+        exposure = 1;                        // Integrations-Interval [0,255] ms
+
+        Serial.print("Exposure = ");
+        Serial.println(exposure);
+
+        start.drawButton(true);
+        getBaseline();
+        delay(2000);
+        digitalWrite(relay3, HIGH);
+        showmsgXY(320,280,1,&FreeSans12pt7b,"OK");
     }
   }
 
@@ -210,14 +242,17 @@ void loop(void)
     on.press(down && on.contains(pixel_x, pixel_y));
     off.press(down && off.contains(pixel_x, pixel_y));
 
-    tft.fillRect(180, 160, 20, 10, GREEN);
-    tft.fillRect(180, 240, 20, 10, RED);
-
     if (back_btn.justReleased())
         back_btn.drawButton();
 
     if (next_btn.justReleased())
         next_btn.drawButton();
+
+    if (on.justReleased())
+        on.drawButton();
+
+    if (off.justReleased())
+        off.drawButton();
 
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
@@ -234,17 +269,19 @@ void loop(void)
     }
 
     if (on.justPressed()) {
-        off.drawButton(false);
         on.drawButton(true);
         digitalWrite(in1, LOW);
 	      digitalWrite(in2, HIGH);
+        tft.fillRect(180, 160, 20, 10, GREEN);
+        tft.fillRect(180, 240, 20, 10, BLACK);
     }
 
     if (off.justPressed()) {
         off.drawButton(true);
-        on.drawButton(false);
         digitalWrite(in1, LOW);
 	      digitalWrite(in2, LOW);
+        tft.fillRect(180, 160, 20, 10, BLACK);
+        tft.fillRect(180, 240, 20, 10, RED);
     }
 
     speed1 = 1023 - analogRead(A8);
@@ -252,7 +289,7 @@ void loop(void)
       speed1 = (speed1+255)/5;
     }
     analogWrite(enB, speed1);
-    Serial.println(speed1);
+    // Serial.println(speed1);
   }
 
   // Tahap 2
@@ -268,6 +305,12 @@ void loop(void)
 
     if (next_btn.justReleased())
         next_btn.drawButton();
+
+    if (start.justReleased())
+        start.drawButton();
+
+    if (stop.justReleased())
+        stop.drawButton();
     
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
@@ -285,7 +328,6 @@ void loop(void)
 
     if (start.justPressed()) {
         start.drawButton(true);
-        stop.drawButton();
         digitalWrite(relay1, LOW);
         digitalWrite(relay2, LOW);
         tft.fillRect(180, 160, 20, 10, GREEN);
@@ -295,7 +337,6 @@ void loop(void)
 
     if (stop.justPressed()) {
         stop.drawButton(true);
-        start.drawButton();
         digitalWrite(relay1, HIGH);
         digitalWrite(relay2, HIGH);
         tft.fillRect(180, 160, 20, 10, BLACK);
@@ -311,14 +352,17 @@ void loop(void)
     on.press(down && on.contains(pixel_x, pixel_y));
     off.press(down && off.contains(pixel_x, pixel_y));
 
-    tft.fillRect(180, 160, 20, 10, GREEN);
-    tft.fillRect(180, 240, 20, 10, RED);
-
     if (back_btn.justReleased())
         back_btn.drawButton();
 
     if (next_btn.justReleased())
         next_btn.drawButton();
+
+    if (on.justReleased())
+        on.drawButton();
+
+    if (off.justReleased())
+        off.drawButton();
 
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
@@ -336,16 +380,18 @@ void loop(void)
 
     if (on.justPressed()) {
         on.drawButton(true);
-        off.drawButton(false);
         digitalWrite(in3, LOW);
 	      digitalWrite(in4, HIGH);
+        tft.fillRect(180, 160, 20, 10, GREEN);
+        tft.fillRect(180, 240, 20, 10, BLACK);
     }
 
     if (off.justPressed()) {
-        on.drawButton(false);
         off.drawButton(true);
         digitalWrite(in3, LOW);
 	      digitalWrite(in4, LOW);
+        tft.fillRect(180, 160, 20, 10, BLACK);
+        tft.fillRect(180, 240, 20, 10, RED);
     }
 
     speed2 = 1023 - analogRead(A9);
@@ -353,7 +399,7 @@ void loop(void)
       speed2 = speed2 / 5.68 + 75;
     }
     analogWrite(enA, speed2);
-    Serial.println(speed2);
+    // Serial.println(speed2);
   }
 
   // Grafik Spektrofotometer
@@ -402,8 +448,9 @@ void loop(void)
     } 
 
     if (start.justPressed()) {
+        //baselineAcquired = 1;
         digitalWrite(relay3, LOW);
-        // exposure = 0;                        // Integrations-Interval [0,255] ms
+        exposure = 1;                        // Integrations-Interval [0,255] ms
 
         Serial.print("Exposure = ");
         Serial.println(exposure);
@@ -414,46 +461,57 @@ void loop(void)
         digitalWrite(relay3, HIGH);
         // Spektrum Warna
         for(i = 0; i < 128; i++){
+          float abs = baseline[i]/pixels[i];
+          float logValue = log10(abs);
+          // Serial.print("log10(");
+          // Serial.print(abs);
+          // Serial.print(") = ");
+          // Serial.println(logValue);
+          if (logValue < 0){
+            logValue = 0;
+          }
+          au[i] = logValue;
+          absorbance[i] = (logValue * 285 / 1.25) + 15;
             if(i >= 0 && i < 32){       
-                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255 - int((255.0/32.0) * (float(i) + 1.0/3.0)), 0, 255));        
-                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/32.0) * (float(i) + 2.0/3.0)), 0, 255));
-                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/32.0) * i), 0, 255));           
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - absorbance[i], tft.color565(255 - int((255.0/32.0) * (float(i) + 1.0/3.0)), 0, 255));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (absorbance[i] + (1.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(255 - int((255.0/32.0) * (float(i) + 2.0/3.0)), 0, 255));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (absorbance[i] + (2.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(255 - int((255.0/32.0) * i), 0, 255));           
             }
 
             if(i >= 32 && i < 48){       
-                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0, int((255.0/16.0) * (i - 32)),255));        
-                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 1.0/3.0)), 255));
-                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 2.0/3.0)), 255));            
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - absorbance[i], tft.color565(0, int((255.0/16.0) * (i - 32)),255));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (absorbance[i] + (1.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 1.0/3.0)), 255));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (absorbance[i] + (2.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(0, int((255.0/16.0) * (i - 32 + 2.0/3.0)), 255));            
             }
 
             if(i >= 48 && i < 61){       
-                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48))));        
-                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 1.0/3.0))));
-                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 2.0/3.0))));
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - absorbance[i], tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48))));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (absorbance[i] + (1.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 1.0/3.0))));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (absorbance[i] + (2.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(0, 255, 255 - int((255.0/13.0) * (i - 48 + 2.0/3.0))));
             }
 
             if(i >= 61 && i < 82){       
-                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0 + int((255.0/21.0) * (i - 61)), 255, 0));        
-                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 1.0/3.0)), 255, 0));
-                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 2.0/3.0)), 255, 0));
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - absorbance[i], tft.color565(0 + int((255.0/21.0) * (i - 61)), 255, 0));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (absorbance[i] + (1.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 1.0/3.0)), 255, 0));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (absorbance[i] + (2.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(0 + int((255.0/21.0) * (i - 61 + 2.0/3.0)), 255, 0));
             }  
         
             if(i >= 82 && i < 107){       
-                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255, 255 - int((255.0/25.0) * (i - 82)), 0));        
-                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 1.0/3.0)), 0));
-                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 2.0/3.0)), 0));           
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - absorbance[i], tft.color565(255, 255 - int((255.0/25.0) * (i - 82)), 0));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (absorbance[i] + (1.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 1.0/3.0)), 0));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (absorbance[i] + (2.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(255, 255 - int((255.0/25.0) * (i - 82 + 2.0/3.0)), 0));           
             } 
             
             if(i >= 107 && i < 127){       
-                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(255 - int((255.0/34.0) * (i - 107)), 0, 0));        
-                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (pixels[i] + (1.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 1.0/3.0)), 0, 0));
-                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (pixels[i] + (2.0/3.0) * (pixels[i+1] - pixels[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 2.0/3.0)), 0, 0));
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - absorbance[i], tft.color565(255 - int((255.0/34.0) * (i - 107)), 0, 0));        
+                tft.drawLine(10 + 3*i + 1, 299, 10 + 3*i + 1, 299 - (absorbance[i] + (1.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 1.0/3.0)), 0, 0));
+                tft.drawLine(10 + 3*i + 2, 299, 10 + 3*i + 2, 299 - (absorbance[i] + (2.0/3.0) * (absorbance[i+1] - absorbance[i])), tft.color565(255 - int((255.0/34.0) * (i - 107 + 2.0/3.0)), 0, 0));
             }
 
             if(i == 127){
-                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - pixels[i], tft.color565(0 + int((255.0/34.0) * (i - 107)), 255, 255));
+                tft.drawLine(10 + 3*i, 299, 10 + 3*i, 299 - absorbance[i], tft.color565(0 + int((255.0/34.0) * (i - 107)), 255, 255));
             }
-        }         
+        }        
         delay(5000);
     }
   }
@@ -463,12 +521,16 @@ void loop(void)
     bool down = Touch_getXY();
     back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
     next_btn.press(down && next_btn.contains(pixel_x, pixel_y));
+    start.press(down && start.contains(pixel_x, pixel_y));
 
     if (back_btn.justReleased())
         back_btn.drawButton();
 
     if (next_btn.justReleased())
         next_btn.drawButton();
+
+    if (start.justReleased())
+        start.drawButton();  
 
     if (back_btn.justPressed()) {
         back_btn.drawButton(true);
@@ -479,6 +541,24 @@ void loop(void)
         next_btn.drawButton(true);
         drawSave();
     }
+
+    if (start.justPressed()) {
+        start.drawButton();
+        getMax();
+
+        tft.setCursor(100, 140);
+        tft.print("Peak Absorbance:");
+        tft.setCursor(100, 180);
+        tft.print("Peak Wavelength:");
+        tft.setCursor(300, 140);
+        tft.print(maxValue);
+        tft.setCursor(300, 180);
+        tft.print(maxIndex);
+        tft.setCursor(360, 140);
+        tft.print("a.u.");
+        tft.setCursor(360, 180);
+        tft.print("nm");
+    }
   }
 
   // Simpan Data
@@ -486,7 +566,6 @@ void loop(void)
     bool down = Touch_getXY();
     yes.press(down && yes.contains(pixel_x, pixel_y));
     no.press(down && no.contains(pixel_x, pixel_y));
-
     if (yes.justReleased())
         yes.drawButton();
 
@@ -513,15 +592,18 @@ void loop(void)
         if (dataFile) {
           Serial.print("Writing to file...");
           
-          dataFile.println("PARAMETER");
-          dataFile.print("Exposure: ");
-          dataFile.println(exposure);
-
           dataFile.println("HASIL");
+
+          dataFile.println("Peak Absorbance:");
+          dataFile.println(maxValue);
+          dataFile.println("Peak Wavelength:");
+          dataFile.println(maxIndex);
+          dataFile.println("");
+          dataFile.println("");
 
           for(int j = 0; j < 128; j++)
           {
-            dataFile.println(pixels[j]);
+            dataFile.println(au[j]);
           }
 
           // close the file:
@@ -570,7 +652,7 @@ void loop(void)
 
     if (yes.justPressed()) {
         yes.drawButton(true);
-        drawGraph();
+        persiapanSampel();
     }
 
     if (no.justPressed()) {
@@ -603,59 +685,75 @@ void getCamera(){
   for (int j = 0; j < 128; j++){
     delayMicroseconds(20);
     
-    pixels[j] = analogRead(pixel_value) / factor;    // Brightness range [0,255]
-    Serial.print("pixel-");
-    Serial.print(j);
-    Serial.print(" ");
-    Serial.print(pixels[j]);
-    Serial.println();
+    // if (baselineAcquired == 0){
+    //   baseline[j] = analogRead(pixel_value) / factor;
+    //   Serial.print("baseline-");
+    //   Serial.print(j);
+    //   Serial.print(" ");
+    //   Serial.println(baseline[j]);
+    // }
+
+    // if (baselineAcquired == 1){
+      pixels[j] = analogRead(pixel_value) / factor;    // Brightness range [0,255]
+      Serial.print("pixel-");
+      Serial.print(j);
+      Serial.print(" ");
+      Serial.println(pixels[j]);
+    //}
+
     digitalWrite(clk, HIGH);
     digitalWrite(clk, LOW);
   }
  
   delayMicroseconds(20);
+}
 
-  // digitalWrite(clk, LOW);
-  // digitalWrite(si, HIGH);
-  // digitalWrite(clk, HIGH);
-  // digitalWrite(si, LOW);
+void getMax() {
+  // Find the maximum value
+  float tempMax = absorbance[0]; // Assume the first element is the largest initially
+  maxIndex = 0;
+  
+  for (int i = 0; i < 127; i++) {
+    if (absorbance[i] > tempMax) {
+      tempMax = absorbance[i];
+      maxValue = (tempMax - 15) / 285;
+      maxIndex = wavelength[i];
+    }
+  }
+}
 
-  // int utime = micros();
+void getBaseline(){
+  digitalWrite(clk, LOW);
+  digitalWrite(si, HIGH);
+  digitalWrite(clk, HIGH);
+  digitalWrite(si, LOW);
+  digitalWrite(clk, LOW);
+ 
+  for (int j = 0; j < 128; j++){
+    digitalWrite(clk, HIGH);
+    digitalWrite(clk, LOW);
+  }
+ 
+  delayMicroseconds(exposure);
+  
+  digitalWrite(si, HIGH);
+  digitalWrite(clk, HIGH);
+  digitalWrite(si, LOW);
+  digitalWrite(clk, LOW);
     
-  // digitalWrite(clk, LOW);
- 
-  // for (int j = 0; j < 128; j++){
-  //   digitalWrite(clk, HIGH);
-  //   digitalWrite(clk, LOW);
-  // }
- 
-  // delayMicroseconds(exposure);
- 
-  // digitalWrite(si, HIGH);
-  // digitalWrite(clk, HIGH);
-  // digitalWrite(si, LOW);
- 
-  // utime = micros() - utime;
-    
-  // digitalWrite(clk, LOW);
-    
-  // for (int j = 0; j < 128; j++){
-  //   delayMicroseconds(20);
-        
-  //   pixels[j] = analogRead(pixel_value)/4;
-        
-  //   digitalWrite(clk, HIGH);
-  //   digitalWrite(clk, LOW);
+  for (int j = 0; j < 128; j++){
+    delayMicroseconds(20);
+    baseline[j] = analogRead(pixel_value) / factor;
 
-  //   Serial.print("pixel-");
-  //   Serial.print(j);
-  //   Serial.print(": ");
-  //   Serial.print(pixels[j]);
-  //   Serial.println();
-  // }
-
-  // digitalWrite(clk, HIGH);
-  // digitalWrite(clk, LOW);
-
-  // delayMicroseconds(20);
+    Serial.print("baseline-");
+    Serial.print(j);
+    Serial.print(" ");
+    Serial.print(baseline[j]);
+    // Serial.print(" ");
+    // Serial.print(pixels[j]);
+    Serial.println();
+    digitalWrite(clk, HIGH);
+    digitalWrite(clk, LOW);
+  }  
+  delayMicroseconds(20);
 }

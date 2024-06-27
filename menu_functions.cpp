@@ -4,7 +4,7 @@
 #include <Fonts/FreeSans12pt7b.h>
 
 // Adafruit GFX
-extern Adafruit_GFX_Button start, stop, mode, refresh, keypad; 
+extern Adafruit_GFX_Button start, stop, mode, calibrate;
 extern Adafruit_GFX_Button on, off, back_btn, next_btn;
 extern Adafruit_GFX_Button btn1, btn2, btn3, btn4;
 extern Adafruit_GFX_Button yes, no;
@@ -48,15 +48,6 @@ void drawCentreString(const char *buf, int x, int y, int sz)
     tft.print(buf);
 }
 
-/*
-void drawTemp(byte x, byte y, float temp)
-{
-  char buf[16];
-  dtostrf(temp, 6, 1, buf);
-  showmsgXY(x, y, 2, &FreeSans12pt7b, buf);  
-}
-*/
-
 void drawMenu()
 {
     state = 0;
@@ -72,7 +63,7 @@ void drawMenu()
 }
 
 
-void drawStart()
+void drawCalibrate()
 {
     state = 1;
     tft.fillScreen(BLACK);
@@ -80,6 +71,9 @@ void drawStart()
     showmsgXY(20,40,1,&FreeSans12pt7b,"Calibration");
     back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
     back_btn.drawButton(false);
+
+    calibrate.initButton(&tft, 240, 180, 150, 60, WHITE, BLACK, WHITE, "Calibrate", 1);
+    calibrate.drawButton(false);
 }
 
 
@@ -166,12 +160,13 @@ void drawResults()
     state = 6;
     tft.fillScreen(BLACK);
     showmsgXY(20, 40, 1, &FreeSans12pt7b, "Results");
-
     back_btn.initButton(&tft, 430, 30, 80, 40, WHITE, BLACK, WHITE, "BACK", 1);
     next_btn.initButton(&tft, 340, 30, 80, 40, WHITE, BLACK, WHITE, "NEXT", 1);
+    start.initButton(&tft, 250, 30, 80, 40, WHITE, BLACK, WHITE, "GET", 1);
     
     back_btn.drawButton(false);
     next_btn.drawButton(false);
+    start.drawButton(false);
 }
 
 void drawSave()

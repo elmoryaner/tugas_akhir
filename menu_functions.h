@@ -12,7 +12,7 @@
   void drawMenu();
 
   // Menu Set Parameter
-  void drawStart();
+  void drawCalibrate();
 
   // Menu Tahap 1
   void persiapanSampel();
